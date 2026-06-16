@@ -1,0 +1,119 @@
+@import "tailwindcss";
+
+@theme {
+  --color-saffron: #FF6B00;
+  --color-saffron-dark: #CC5500;
+  --color-saffron-light: #FFA166;
+  --color-deep-blue: #1A237E;
+  --color-deep-blue-dark: #0D1350;
+  --color-deep-blue-light: #303F9F;
+  --color-dark-bg: #0A0F24;
+  --color-dark-card: #121836;
+  --color-dark-border: #1F295A;
+}
+
+:root {
+  --font-sans: var(--font-poppins), system-ui, -apple-system, sans-serif;
+  --background: #060919;
+  --foreground: #F8FAFC;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  overflow-x: hidden;
+  background-image: 
+    radial-gradient(circle at 10% 20%, rgba(255, 107, 0, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(26, 35, 126, 0.15) 0%, transparent 50%);
+  background-attachment: fixed;
+}
+
+/* Glassmorphism Classes */
+.glass-panel {
+  background: rgba(18, 24, 54, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.glass-panel-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-panel-hover:hover {
+  background: rgba(18, 24, 54, 0.85);
+  border-color: rgba(255, 107, 0, 0.3);
+  box-shadow: 0 10px 30px -10px rgba(255, 107, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.glass-input {
+  background: rgba(6, 9, 25, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #FFFFFF;
+  transition: all 0.2s ease-in-out;
+}
+
+.glass-input:focus {
+  border-color: #FF6B00;
+  box-shadow: 0 0 0 2px rgba(255, 107, 0, 0.2);
+  outline: none;
+  background: rgba(6, 9, 25, 0.8);
+}
+
+/* Shimmer & Glow Effects */
+.glow-saffron {
+  box-shadow: 0 0 20px 2px rgba(255, 107, 0, 0.25);
+}
+
+.glow-blue {
+  box-shadow: 0 0 20px 2px rgba(26, 35, 126, 0.35);
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, #FFF 30%, #FF9E66 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-saffron {
+  background: linear-gradient(135deg, #FF6B00 0%, #FFA166 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-blue {
+  background: linear-gradient(135deg, #303F9F 0%, #8C9EFF 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Animations */
+@keyframes pulse-subtle {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.02); opacity: 0.95; }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 4s infinite ease-in-out;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #060919;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 107, 0, 0.5);
+}
