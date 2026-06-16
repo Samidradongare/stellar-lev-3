@@ -1,0 +1,16 @@
+node_modules/
+artifacts/
+cache/
+coverage/
+coverage.json
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.next/
+out/
+build/
+dist/
+.openzeppelin/
+*.log
