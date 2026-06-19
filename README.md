@@ -24,7 +24,7 @@ PuneFinder is a decentralized lost-and-found registry dApp built for the city of
 The lifecycle of listing, claiming, and returning a lost item is fully managed on-chain through the `LostAndFound` escrow contract:
 
 ```mermaid
-sequence-diagram
+sequenceDiagram
     autonumber
     actor Owner as Item Owner
     participant EVM as LostAndFound Contract
