@@ -45,8 +45,10 @@ export default function Dashboard() {
       // Since mapping by claimant is not natively indexable, we query all claims for all items
       // To optimize: we scan items and look inside their claims.
       const claimsList: any[] = [];
-      let itemId = 1;
-      while (true) {
+      const totalItemsBigInt = await contract.getTotalItems();
+      const totalItems = Number(totalItemsBigInt);
+
+      for (let itemId = 1; itemId <= totalItems; itemId++) {
         try {
           const item = await contract.getItem(itemId);
           const claimIds: bigint[] = await contract.getClaimsByItem(itemId);
@@ -67,9 +69,8 @@ export default function Dashboard() {
               });
             }
           }
-          itemId++;
         } catch (err) {
-          break; // break when getItem reverts
+          console.error(`Error fetching item ${itemId} claims:`, err);
         }
       }
       
@@ -84,6 +85,23 @@ export default function Dashboard() {
   useEffect(() => {
     if (provider && account && isCorrectNetwork) {
       fetchDashboardData();
+
+      const contract = getLostAndFoundContract(provider);
+      if (contract) {
+        const handleEvent = () => fetchDashboardData();
+        
+        contract.on("ItemPosted", handleEvent);
+        contract.on("ClaimSubmitted", handleEvent);
+        contract.on("ClaimVerified", handleEvent);
+        contract.on("ClaimRejected", handleEvent);
+
+        return () => {
+          contract.off("ItemPosted", handleEvent);
+          contract.off("ClaimSubmitted", handleEvent);
+          contract.off("ClaimVerified", handleEvent);
+          contract.off("ClaimRejected", handleEvent);
+        };
+      }
     } else {
       // Mock data for disconnected state
       setPostedItems([]);

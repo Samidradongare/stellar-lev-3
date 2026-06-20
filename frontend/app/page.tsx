@@ -30,21 +30,20 @@ export default function Home() {
       let claimedCount = 0;
       let returnedCount = 0;
 
-      // We can scan items up to ID 100 or check where it reverts
-      let id = 1;
+      const totalItemsBigInt = await contract.getTotalItems();
+      const totalItems = Number(totalItemsBigInt);
       const fetchedItems = [];
-      while (true) {
+
+      for (let id = 1; id <= totalItems; id++) {
         try {
           const item = await contract.getItem(id);
           fetchedItems.push(item);
-          if (item.status === 0) lostCount++; // Lost
-          else if (item.status === 1) claimedCount++; // Claimed
-          else if (item.status === 2) returnedCount++; // Verified
-          else if (item.status === 3) returnedCount++; // Completed (rejections count as completed but we categorize as resolved)
-          id++;
+          if (item.status === 0n) lostCount++; // Lost
+          else if (item.status === 1n) claimedCount++; // Claimed
+          else if (item.status === 2n) returnedCount++; // Verified
+          else if (item.status === 3n) returnedCount++; // Completed
         } catch (e) {
-          // Reverted, means no more items
-          break;
+          console.error(`Error fetching item ${id}:`, e);
         }
       }
 
@@ -77,6 +76,23 @@ export default function Home() {
   useEffect(() => {
     if (provider && isCorrectNetwork) {
       fetchBlockchainData();
+
+      const contract = getLostAndFoundContract(provider);
+      if (contract) {
+        const handleEvent = () => fetchBlockchainData();
+        
+        contract.on("ItemPosted", handleEvent);
+        contract.on("ClaimSubmitted", handleEvent);
+        contract.on("ClaimVerified", handleEvent);
+        contract.on("ClaimRejected", handleEvent);
+
+        return () => {
+          contract.off("ItemPosted", handleEvent);
+          contract.off("ClaimSubmitted", handleEvent);
+          contract.off("ClaimVerified", handleEvent);
+          contract.off("ClaimRejected", handleEvent);
+        };
+      }
     } else {
       // Setup mock data for presentation before connection
       setRecentActivities([

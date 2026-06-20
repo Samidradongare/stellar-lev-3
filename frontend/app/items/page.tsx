@@ -27,9 +27,10 @@ export default function Items() {
       if (!contract) return;
 
       const fetchedListings: ItemType[] = [];
-      let id = 1;
+      const totalItemsBigInt = await contract.getTotalItems();
+      const totalItems = Number(totalItemsBigInt);
       
-      while (true) {
+      for (let id = 1; id <= totalItems; id++) {
         try {
           const rawItem = await contract.getItem(id);
           fetchedListings.push({
@@ -42,10 +43,8 @@ export default function Items() {
             timestamp: rawItem.timestamp,
             location: rawItem.location
           });
-          id++;
         } catch (err) {
-          // Break when index overflows (getItem reverts)
-          break;
+          console.error(`Error fetching item ${id}:`, err);
         }
       }
 
@@ -62,6 +61,23 @@ export default function Items() {
   useEffect(() => {
     if (provider && isCorrectNetwork) {
       fetchItems();
+
+      const contract = getLostAndFoundContract(provider);
+      if (contract) {
+        const handleEvent = () => fetchItems();
+        
+        contract.on("ItemPosted", handleEvent);
+        contract.on("ClaimSubmitted", handleEvent);
+        contract.on("ClaimVerified", handleEvent);
+        contract.on("ClaimRejected", handleEvent);
+
+        return () => {
+          contract.off("ItemPosted", handleEvent);
+          contract.off("ClaimSubmitted", handleEvent);
+          contract.off("ClaimVerified", handleEvent);
+          contract.off("ClaimRejected", handleEvent);
+        };
+      }
     } else {
       // Mock items for disconnected demo mode
       setItems([
