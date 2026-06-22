@@ -145,7 +145,7 @@ Every push and pull request to the `master` or `main` branch:
 ### ⛓️ Deployed Smart Contracts (Polygon Amoy Testnet)
 *   **LostAndFound (Escrow Registry)**: [`0xB89837E94e6Abd554CB9D420e4201b0850CaC378`](https://amoy.polygonscan.com/address/0xB89837E94e6Abd554CB9D420e4201b0850CaC378)
 *   **FinderNFT (Badge Contract)**: [`0xE436B9c99881A8Af0FbA9843b53117081042434f`](https://amoy.polygonscan.com/address/0xE436B9c99881A8Af0FbA9843b53117081042434f)
-*   **Proof Transaction Hash (Item Posting)**: [`0xa81dbb374945d8b8a0fd62c9cce0524b24fe6798fc7e909a0fba9843b53117081`](https://amoy.polygonscan.com/tx/0xa81dbb374945d8b8a0fd62c9cce0524b24fe6798fc7e909a0fba9843b53117081)
+*   **Proof Transaction Hash (Contract Interaction)**: [`0x1d5eec66c6933155e99be1ed069813c74621a78c3c290eab30994c0484adf661`](https://amoy.polygonscan.com/tx/0x1d5eec66c6933155e99be1ed069813c74621a78c3c290eab30994c0484adf661)
 
 ---
 
