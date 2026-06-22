@@ -133,7 +133,7 @@ Every push and pull request to the `master` or `main` branch:
 
 ---
 
-## 🏆 Level 5 Submission Checklist & Documentation
+## 🏆 Level 3 Submission Checklist & Documentation
 
 ### 🌐 Live Deployment & Links
 *   **Live Application URL**: [https://stellar-lev-3-pzba.vercel.app](https://stellar-lev-3-pzba.vercel.app)
