@@ -166,6 +166,16 @@ Based on user feedback collected from 50+ beta testers, the following product im
 
 ---
 
+### 📸 Screenshots & Proof of Verification
+*   **Mobile Responsive UI**:
+    ![Mobile UI](screenshots/mobile_ui.png)
+*   **CI/CD Pipeline Running**:
+    ![CI/CD Pipeline](screenshots/ci_pipeline.png)
+*   **Test Output (12/12 Passing)**:
+    ![Hardhat Tests](screenshots/hardhat_tests.png)
+
+---
+
 ### ✅ Submission Checklist
 *   [x] Public GitHub repository (`https://github.com/Samidradongare/stellar-lev-3.git`)
 *   [x] README with complete documentation
