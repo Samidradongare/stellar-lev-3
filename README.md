@@ -137,7 +137,6 @@ Every push and pull request to the `master` or `main` branch:
 
 ### 🌐 Live Deployment & Links
 *   **Live Application URL**: [https://stellar-lev-3-pzba.vercel.app](https://stellar-lev-3-pzba.vercel.app)
-*  (https://docs.google.com/presentation/d/1yA4d5f_mockPitchDeckLink93820485_example/edit)
 *   **Walkthrough Demo Video**: [PuneFinder Walkthrough Video - Loom](https://www.loom.com/share/ce59d56e607144749bbc609ef65b9bfb)
 *   **Exported Responses (Excel/CSV)**: [responses_feedback.csv](file:///c:/Users/Lenovo/Desktop/stellar%20lev%203/responses_feedback.csv) *(Saved locally in project workspace)*
 
