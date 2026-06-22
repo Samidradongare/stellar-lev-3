@@ -193,4 +193,14 @@ describe("PuneFinder Contract Suite", function () {
     await lostAndFound.connect(owner).verifyClaim(1);
     expect((await lostAndFound.getItem(1)).status).to.equal(2); // ItemStatus.Verified
   });
+
+  // 12. Should return correct total items count
+  it("Should return correct total items count", async function () {
+    expect(await lostAndFound.getTotalItems()).to.equal(0);
+    const reward = ethers.parseEther("0.1");
+    await lostAndFound.postLostItem("Bag", "ipfs://bag", "Viman Nagar", { value: reward });
+    expect(await lostAndFound.getTotalItems()).to.equal(1);
+    await lostAndFound.postLostItem("Keys", "ipfs://keys", "Baner", { value: reward });
+    expect(await lostAndFound.getTotalItems()).to.equal(2);
+  });
 });

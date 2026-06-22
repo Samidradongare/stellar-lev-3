@@ -220,6 +220,10 @@ contract LostAndFound {
     }
 
     // Read Functions
+    function getTotalItems() external view returns (uint256) {
+        return _nextItemId - 1;
+    }
+
     function getItem(uint256 itemId) external view itemExists(itemId) returns (Item memory) {
         return items[itemId];
     }
