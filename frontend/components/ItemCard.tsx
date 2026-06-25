@@ -4,7 +4,6 @@ import React from "react";
 import Link from "next/link";
 import { MapPin, Coins, Calendar } from "lucide-react";
 import { resolveIPFS } from "../hooks/useIPFS";
-import { ethers } from "ethers";
 
 export interface ItemType {
   id: bigint;
@@ -22,7 +21,7 @@ interface ItemCardProps {
 }
 
 export const ItemCard: React.FC<ItemCardProps> = ({ item }) => {
-  const formattedReward = ethers.formatEther(item.reward);
+  const formattedReward = (Number(item.reward) / 10000000).toFixed(4); // Format stroops to XLM
   const dateStr = new Date(Number(item.timestamp) * 1000).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
@@ -96,7 +95,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item }) => {
               <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">Reward Pool</span>
               <span className="flex items-center gap-1 text-base font-extrabold text-saffron">
                 <Coins className="w-4 h-4" />
-                {formattedReward} ETH
+                {formattedReward} XLM
               </span>
             </div>
             

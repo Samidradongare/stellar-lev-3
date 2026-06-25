@@ -2,17 +2,15 @@
 
 import React, { useState } from "react";
 import { useWallet } from "../context/WalletContext";
-import { Wallet, LogOut, AlertTriangle, ChevronDown, Check } from "lucide-react";
+import { Wallet, LogOut, ChevronDown, Check } from "lucide-react";
 
 export const WalletConnect: React.FC = () => {
   const {
     account,
     balance,
     isConnecting,
-    isCorrectNetwork,
     connectWallet,
     disconnectWallet,
-    switchNetwork,
     networkError
   } = useWallet();
 
@@ -36,20 +34,6 @@ export const WalletConnect: React.FC = () => {
   }
 
   if (account) {
-    if (!isCorrectNetwork) {
-      return (
-        <button
-          onClick={switchNetwork}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-300 font-medium transition-all shadow-[0_0_15px_rgba(245,158,11,0.1)]"
-          id="wallet-connect-btn"
-          title="Unsupported Network. Click to switch network."
-        >
-          <AlertTriangle className="w-4 h-4" />
-          Switch to Localhost
-        </button>
-      );
-    }
-
     return (
       <div className="relative">
         <button
@@ -59,7 +43,7 @@ export const WalletConnect: React.FC = () => {
         >
           <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           <span className="hidden sm:inline text-slate-300 text-sm mr-1">
-            {parseFloat(balance).toFixed(4)} POL/ETH
+            {(parseInt(balance) / 10000000).toFixed(4)} XLM
           </span>
           <span className="text-sm border-l border-white/10 pl-2 sm:pl-3">
             {formatAddress(account)}
@@ -79,7 +63,7 @@ export const WalletConnect: React.FC = () => {
                 <p className="text-sm font-semibold truncate text-slate-100">{account}</p>
                 <div className="mt-1 flex items-center gap-1.5 text-xs text-emerald-400">
                   <Check className="w-3.5 h-3.5" />
-                  Correct Network (Active)
+                  Stellar Testnet
                 </div>
               </div>
               <button
@@ -107,7 +91,7 @@ export const WalletConnect: React.FC = () => {
         id="wallet-connect-btn"
       >
         <Wallet className="w-4 h-4" />
-        Connect Wallet
+        Connect Freighter
       </button>
       {networkError && (
         <p className="absolute right-0 mt-2 text-xs text-rose-400 bg-rose-950/40 border border-rose-800/30 px-3 py-1.5 rounded-lg max-w-xs shadow-lg animate-fade-in z-30">

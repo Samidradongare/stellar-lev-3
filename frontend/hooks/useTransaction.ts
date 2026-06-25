@@ -14,7 +14,6 @@ interface TxOptions {
 
 export function useTransaction() {
   const { addToast, triggerConfetti } = useEvents();
-  const { provider } = useWallet();
   const [isPending, setIsPending] = useState(false);
 
   const execute = async (
@@ -35,29 +34,14 @@ export function useTransaction() {
 
     try {
       // Wait for wallet signature and transaction submission
-      const tx = await txPromise;
-      
-      // Update toast to pending confirmation
-      addToast({
-        type: "warning",
-        title: "Transaction Pending",
-        message: "Waiting for block confirmation on the blockchain...",
-        txHash: tx.hash
-      });
-
-      // Wait for receipt
-      const receipt = await tx.wait();
-
-      if (receipt.status === 0) {
-        throw new Error("Transaction reverted on-chain");
-      }
+      const txHash = await txPromise;
 
       // Confirmed!
       addToast({
         type: "success",
         title: "Transaction Confirmed!",
         message: options.successMessage,
-        txHash: tx.hash
+        txHash: txHash
       });
 
       if (options.triggerConfetti) {
@@ -65,23 +49,23 @@ export function useTransaction() {
       }
 
       if (options.onSuccess) {
-        options.onSuccess(receipt);
+        options.onSuccess(txHash);
       }
 
       setIsPending(false);
-      return receipt;
+      return txHash;
     } catch (err: any) {
       console.error("Transaction failed:", err);
       
       // Parse a user-friendly error message
       let friendlyMessage = options.errorMessage;
       
-      if (err.code === "ACTION_REJECTED") {
-        friendlyMessage = "Transaction rejected by user in MetaMask.";
+      if (err.message && err.message.includes("User declined")) {
+        friendlyMessage = "Transaction rejected by user in Freighter.";
       } else if (err.message && err.message.includes("Caller is not the item owner")) {
         friendlyMessage = "Failed: Only the item creator is authorized to perform this action.";
       } else if (err.message && err.message.includes("Reward amount must be greater than 0")) {
-        friendlyMessage = "Failed: Reward amount must be greater than 0 ETH.";
+        friendlyMessage = "Failed: Reward amount must be greater than 0 XLM.";
       } else if (err.reason) {
         friendlyMessage = `Failed: ${err.reason}`;
       } else if (err.data?.message) {

@@ -7,16 +7,9 @@ import { useWallet } from "../context/WalletContext";
 
 export const NotificationToast: React.FC = () => {
   const { notifications, removeToast } = useEvents();
-  const { chainId } = useWallet();
 
   const getExplorerLink = (txHash: string) => {
-    if (chainId === 80002n) {
-      return `https://amoy.polygonscan.com/tx/${txHash}`;
-    }
-    if (chainId === 80001n) {
-      return `https://mumbai.polygonscan.com/tx/${txHash}`;
-    }
-    return `#`; // Local network, no explorer link
+    return `https://stellar.expert/explorer/testnet/tx/${txHash}`;
   };
 
   const getToastIcon = (type: ToastNotification["type"]) => {
@@ -52,21 +45,15 @@ export const NotificationToast: React.FC = () => {
             <p className="text-xs text-slate-300 mt-1 leading-relaxed">{notif.message}</p>
             {notif.txHash && (
               <div className="mt-2.5 flex items-center gap-1.5">
-                {chainId === 1337n || chainId === 31337n ? (
-                  <span className="text-[10px] text-slate-500 font-mono">
-                    Local Tx: {notif.txHash.substring(0, 10)}...
-                  </span>
-                ) : (
-                  <a
-                    href={getExplorerLink(notif.txHash)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-[10px] font-bold text-saffron hover:underline"
-                  >
-                    View on Polygonscan
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                )}
+                <a
+                  href={getExplorerLink(notif.txHash)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-[10px] font-bold text-saffron hover:underline"
+                >
+                  View on Stellar Expert
+                  <ExternalLink className="w-3 h-3" />
+                </a>
               </div>
             )}
           </div>

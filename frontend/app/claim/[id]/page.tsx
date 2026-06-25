@@ -4,44 +4,33 @@ import React, { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useWallet } from "@/context/WalletContext";
-import { getLostAndFoundContract } from "@/lib/contractHelpers";
+import { simulateContractCall, invokeContractFunction } from "@/lib/contractHelpers";
+import { buildGetItemArgs, buildSubmitClaimArgs, parseItem, ParsedItem } from "@/lib/abis";
 import { useTransaction } from "@/hooks/useTransaction";
 import IPFSImageUpload from "@/components/IPFSImageUpload";
 import LoadingSpinner from "@/components/LoadingSpinner";
-import { Send, ArrowLeft, Info, ShieldAlert, Sparkles } from "lucide-react";
+import { ArrowLeft, Info, ShieldAlert, Sparkles } from "lucide-react";
 
 export default function SubmitClaim({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const itemId = resolvedParams.id;
-  const { account, signer, provider, isCorrectNetwork, connectWallet } = useWallet();
+  const { account, connectWallet } = useWallet();
   const { execute, isPending } = useTransaction();
   const router = useRouter();
 
   // State
-  const [item, setItem] = useState<any>(null);
+  const [item, setItem] = useState<ParsedItem | null>(null);
   const [isLoadingItem, setIsLoadingItem] = useState(true);
   const [proofIPFS, setProofIPFS] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchItem = async () => {
-      if (!provider || !isCorrectNetwork) return;
       setIsLoadingItem(true);
       try {
-        const contract = getLostAndFoundContract(provider);
-        if (!contract) return;
-
-        const rawItem = await contract.getItem(Number(itemId));
-        setItem({
-          id: rawItem.id,
-          owner: rawItem.owner,
-          description: rawItem.description,
-          photoIPFS: rawItem.photoIPFS,
-          reward: rawItem.reward,
-          status: Number(rawItem.status),
-          timestamp: rawItem.timestamp,
-          location: rawItem.location
-        });
+        const itemVal = await simulateContractCall("get_item", buildGetItemArgs(Number(itemId)));
+        const parsedItem = parseItem(itemVal);
+        setItem(parsedItem);
       } catch (err) {
         console.error("Error fetching item for claim:", err);
       } finally {
@@ -49,25 +38,8 @@ export default function SubmitClaim({ params }: { params: Promise<{ id: string }
       }
     };
 
-    if (provider && isCorrectNetwork) {
-      fetchItem();
-    } else {
-      // Mock item for disconnected preview
-      if (itemId === "2") {
-        setItem({
-          id: 2n,
-          owner: "0x2345678901234567890123456789012345678901",
-          description: "Dell Latitude laptop left in a cafe with a silver stickers on the shell.",
-          photoIPFS: "ipfs://mock-laptop",
-          reward: 250000000000000000n, // 0.25 ETH
-          status: 1,
-          timestamp: BigInt(Math.floor(Date.now() / 1000) - 7200),
-          location: "Baner"
-        });
-      }
-      setIsLoadingItem(false);
-    }
-  }, [provider, isCorrectNetwork, itemId]);
+    fetchItem();
+  }, [itemId]);
 
   const handleUploadSuccess = (ipfsHash: string) => {
     setProofIPFS(ipfsHash);
@@ -83,13 +55,22 @@ export default function SubmitClaim({ params }: { params: Promise<{ id: string }
     }
 
     try {
-      const contract = getLostAndFoundContract(signer);
-      if (!contract) return;
+      if (!account) return;
 
-      const txPromise = contract.submitClaim(Number(itemId), proofIPFS);
-      
-      await execute(txPromise, {
-        pendingMessage: "Submitting found item claim. Please sign in MetaMask...",
+      const args = buildSubmitClaimArgs(
+        account,
+        Number(itemId),
+        proofIPFS
+      );
+
+      const txPromise = invokeContractFunction(
+        "submit_claim",
+        args,
+        account
+      );
+
+      await execute(txPromise as any, {
+        pendingMessage: "Submitting found item claim. Please sign in Freighter...",
         successMessage: "Claim submitted successfully! The owner will review your proof.",
         errorMessage: "Failed to submit found item claim.",
         onSuccess: () => {
@@ -109,7 +90,7 @@ export default function SubmitClaim({ params }: { params: Promise<{ id: string }
           <ShieldAlert className="w-12 h-12 text-amber-400 mb-4" />
           <h2 className="text-xl font-bold text-white mb-2">Wallet Disconnected</h2>
           <p className="text-sm text-slate-400 mb-6">
-            You must connect your MetaMask wallet to report finding this item and submit a claim.
+            You must connect your Freighter wallet to report finding this item and submit a claim.
           </p>
           <button
             onClick={connectWallet}
@@ -117,21 +98,6 @@ export default function SubmitClaim({ params }: { params: Promise<{ id: string }
           >
             Connect Wallet
           </button>
-        </div>
-      </div>
-    );
-  }
-
-  // State: Wrong Network
-  if (!isCorrectNetwork) {
-    return (
-      <div className="max-w-md mx-auto my-16 px-4">
-        <div className="glass-panel p-8 rounded-2xl text-center flex flex-col items-center">
-          <ShieldAlert className="w-12 h-12 text-rose-500 mb-4" />
-          <h2 className="text-xl font-bold text-white mb-2">Unsupported Network</h2>
-          <p className="text-sm text-slate-400 mb-6">
-            Please switch your network configuration to Localhost or Polygon Amoy to interact with contracts.
-          </p>
         </div>
       </div>
     );
@@ -193,7 +159,7 @@ export default function SubmitClaim({ params }: { params: Promise<{ id: string }
         )}
 
         <form onSubmit={handleSubmitClaim} className="space-y-6">
-          
+
           {/* IPFS Photo Upload */}
           <IPFSImageUpload
             onUploadSuccess={handleUploadSuccess}

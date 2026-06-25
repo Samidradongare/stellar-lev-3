@@ -3,12 +3,13 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useWallet } from "@/context/WalletContext";
-import { getLostAndFoundContract } from "@/lib/contractHelpers";
+import { simulateContractCall } from "@/lib/contractHelpers";
+import { buildGetTotalItemsArgs, buildGetItemArgs, parseItem } from "@/lib/abis";
+import { scValToNative } from "@stellar/stellar-sdk";
 import { Search, PlusCircle, Shield, Award, Landmark, RefreshCw, ArrowRight } from "lucide-react";
-import { ethers } from "ethers";
 
 export default function Home() {
-  const { account, provider, isCorrectNetwork } = useWallet();
+  const { account } = useWallet();
   const [stats, setStats] = useState({
     lost: 14,
     claimed: 6,
@@ -18,30 +19,27 @@ export default function Home() {
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
 
   const fetchBlockchainData = async () => {
-    if (!provider || !isCorrectNetwork) return;
     setIsLoadingStats(true);
     try {
-      const contract = getLostAndFoundContract(provider);
-      if (!contract) return;
-
-      // In a real environment, we'd query contract items
-      // Let's query item count or loop to construct stats
       let lostCount = 0;
       let claimedCount = 0;
       let returnedCount = 0;
-
-      const totalItemsBigInt = await contract.getTotalItems();
-      const totalItems = Number(totalItemsBigInt);
       const fetchedItems = [];
+
+      const totalItemsVal = await simulateContractCall(
+        "get_total_items",
+        buildGetTotalItemsArgs()
+      );
+      const totalItems = scValToNative(totalItemsVal) as number;
 
       for (let id = 1; id <= totalItems; id++) {
         try {
-          const item = await contract.getItem(id);
+          const itemVal = await simulateContractCall("get_item", buildGetItemArgs(id));
+          const item = parseItem(itemVal);
           fetchedItems.push(item);
-          if (item.status === 0n) lostCount++; // Lost
-          else if (item.status === 1n) claimedCount++; // Claimed
-          else if (item.status === 2n) returnedCount++; // Verified
-          else if (item.status === 3n) returnedCount++; // Completed
+          if (item.status === "Lost") lostCount++;
+          else if (item.status === "Claimed") claimedCount++;
+          else if (item.status === "Verified" || item.status === "Completed") returnedCount++;
         } catch (e) {
           console.error(`Error fetching item ${id}:`, e);
         }
@@ -54,15 +52,15 @@ export default function Home() {
       });
 
       // Map recent activities from items
-      const sortedItems = [...fetchedItems].sort((a, b) => Number(b.timestamp) - Number(a.timestamp));
+      const sortedItems = [...fetchedItems].sort((a, b) => b.timestamp - a.timestamp);
       const activities = sortedItems.slice(0, 5).map((item) => ({
         id: item.id.toString(),
-        type: item.status === 0 ? "post" : item.status === 1 ? "claim" : "resolved",
-        title: item.status === 0 ? "New Lost Item Listed" : item.status === 1 ? "Claim Submitted" : "Item Successfully Returned",
+        type: item.status === "Lost" ? "post" : item.status === "Claimed" ? "claim" : "resolved",
+        title: item.status === "Lost" ? "New Lost Item Listed" : item.status === "Claimed" ? "Claim Submitted" : "Item Successfully Returned",
         description: item.description,
         location: item.location,
-        reward: ethers.formatEther(item.reward),
-        timestamp: new Date(Number(item.timestamp) * 1000).toLocaleDateString()
+        reward: (Number(item.reward) / 10000000).toFixed(2),
+        timestamp: new Date(item.timestamp * 1000).toLocaleDateString()
       }));
 
       setRecentActivities(activities);
@@ -74,58 +72,8 @@ export default function Home() {
   };
 
   useEffect(() => {
-    if (provider && isCorrectNetwork) {
-      fetchBlockchainData();
-
-      const contract = getLostAndFoundContract(provider);
-      if (contract) {
-        const handleEvent = () => fetchBlockchainData();
-        
-        contract.on("ItemPosted", handleEvent);
-        contract.on("ClaimSubmitted", handleEvent);
-        contract.on("ClaimVerified", handleEvent);
-        contract.on("ClaimRejected", handleEvent);
-
-        return () => {
-          contract.off("ItemPosted", handleEvent);
-          contract.off("ClaimSubmitted", handleEvent);
-          contract.off("ClaimVerified", handleEvent);
-          contract.off("ClaimRejected", handleEvent);
-        };
-      }
-    } else {
-      // Setup mock data for presentation before connection
-      setRecentActivities([
-        {
-          id: "m1",
-          type: "resolved",
-          title: "Item Successfully Returned",
-          description: "Black leather wallet with Aadhaar Card",
-          location: "Koregaon Park",
-          reward: "0.05",
-          timestamp: "Just now"
-        },
-        {
-          id: "m2",
-          type: "claim",
-          title: "Claim Submitted",
-          description: "Dell Latitude 5420 Laptop",
-          location: "Baner",
-          reward: "0.25",
-          timestamp: "10 mins ago"
-        },
-        {
-          id: "m3",
-          type: "post",
-          title: "New Lost Item Listed",
-          description: "Car Keys (Hyundai)",
-          location: "Kothrud",
-          reward: "0.02",
-          timestamp: "1 hour ago"
-        }
-      ]);
-    }
-  }, [provider, isCorrectNetwork]);
+    fetchBlockchainData();
+  }, []);
 
   return (
     <div className="flex flex-col items-center">
@@ -148,8 +96,8 @@ export default function Home() {
           
           <p className="text-base md:text-lg text-slate-300 max-w-2xl mx-auto mb-10 leading-relaxed">
             PuneFinder is a decentralized hyperlocal lost-and-found system for Pune city. 
-            Lock rewards securely in smart contract escrows, claim found matches, and mint official 
-            <strong> FinderNFT</strong> return certificates on Polygon.
+            Lock rewards securely in smart contract escrows on the 
+            <strong> Stellar network</strong> and reward those who find them.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -180,15 +128,13 @@ export default function Home() {
               <Shield className="w-5 h-5 text-saffron" />
               Escrow Network Stats
             </h2>
-            {account && isCorrectNetwork && (
-              <button
-                onClick={fetchBlockchainData}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
-                title="Refresh stats"
-              >
-                <RefreshCw className={`w-4 h-4 ${isLoadingStats ? "animate-spin text-saffron" : ""}`} />
-              </button>
-            )}
+            <button
+              onClick={fetchBlockchainData}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+              title="Refresh stats"
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoadingStats ? "animate-spin text-saffron" : ""}`} />
+            </button>
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
@@ -217,7 +163,7 @@ export default function Home() {
               <span className="text-4xl font-black text-emerald-500 mb-1">
                 {isLoadingStats ? "..." : stats.returned}
               </span>
-              <span className="text-xs text-slate-500">FinderNFTs minted &amp; rewarded</span>
+              <span className="text-xs text-slate-500">Items successfully matched</span>
             </div>
 
           </div>
@@ -240,7 +186,7 @@ export default function Home() {
               <div>
                 <h4 className="font-bold text-slate-200">Tamper-Proof Escrow</h4>
                 <p className="text-xs text-slate-400 mt-1">
-                  Rewards are locked in the open-source Ethereum virtual machine bytecode. Neither party can steal funds; payments release only upon confirmed owner match.
+                  Rewards are locked in the Soroban smart contract. Neither party can steal funds; payments release only upon confirmed owner match.
                 </p>
               </div>
             </div>
@@ -250,9 +196,9 @@ export default function Home() {
                 <Award className="w-5 h-5" />
               </span>
               <div>
-                <h4 className="font-bold text-slate-200">On-Chain Reputation (NFTs)</h4>
+                <h4 className="font-bold text-slate-200">On-Chain Reputation</h4>
                 <p className="text-xs text-slate-400 mt-1">
-                  Honorable citizens who return items are rewarded with non-fungible return certificates. These certificates serve as verifiable badges of community trust.
+                  Honorable citizens who return items are rewarded with verifiable public recognition on the Stellar network.
                 </p>
               </div>
             </div>
@@ -264,11 +210,10 @@ export default function Home() {
           <div className="glass-panel p-6 rounded-2xl">
             <h3 className="text-lg font-bold text-slate-200 mb-6 flex items-center justify-between">
               Recent Activity Feed
-              {!account && <span className="text-[10px] text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20 font-medium">Demo Mode</span>}
             </h3>
             
             <div className="space-y-4">
-              {recentActivities.map((act) => (
+              {recentActivities.length > 0 ? recentActivities.map((act) => (
                 <div
                   key={act.id}
                   className="p-4 rounded-xl bg-slate-900/30 border border-white/5 hover:border-white/10 transition-colors flex items-center justify-between gap-4"
@@ -288,10 +233,14 @@ export default function Home() {
 
                   <div className="flex flex-col items-end flex-shrink-0">
                     <span className="text-xs text-slate-400 font-semibold">Reward</span>
-                    <span className="text-sm font-extrabold text-saffron">{act.reward} ETH</span>
+                    <span className="text-sm font-extrabold text-saffron">{act.reward} XLM</span>
                   </div>
                 </div>
-              ))}
+              )) : (
+                <p className="text-xs text-slate-500 text-center py-6">
+                  Loading recent activity from the ledger...
+                </p>
+              )}
             </div>
 
             <div className="mt-6 text-center">

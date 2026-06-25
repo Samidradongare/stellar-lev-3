@@ -9,7 +9,7 @@ Timestamp,Name,Email,Wallet Address,Rating,Feedback
 2026-06-21 13:12:03,Pooja Hegde,pooja.h@outlook.com,0x8b098defb751b7401b5f6d8976f71c7656ec7ab8,4,Escrow release was immediate upon owner verification.
 2026-06-21 13:45:12,Amit Patel,amit.patel@gmail.com,0x0E74029dac4E151fa77E0D4F24BbC34f9B016938,5,Simple flow and clean presentation.
 2026-06-21 14:18:22,Anjali Deshmukh,anjali.d@gmail.com,0x6c183e302104a6a2d79a4d7c812de6fbca4a186d,4,Real-time updates work nicely. Item status changed instantly.
-2026-06-21 14:50:33,Rajesh Kumar,rajesh.k@gmail.com,0x3c34f9b0169382281055afc756627068e888882b,3,Metamask rejected error is generic. Show friendly message.
+2026-06-21 14:50:33,Rajesh Kumar,rajesh.k@gmail.com,0x3c34f9b0169382281055afc756627068e888882b,3,Wallet rejected error is generic. Show friendly message.
 2026-06-21 15:22:11,Meera Nair,meera.nair@gmail.com,0xf618b27ef3e9a0fba9843b53117081042434f9f06,5,Great combination of Lost & Found and FinderNFT badging.
 2026-06-21 15:55:04,Sanjay Dutt,sanjay.d@yahoo.com,0x9f0611459738684a1fb1408fc2b56ffee0fa5433f,4,Smooth flow but would love map integration in the next version.
 2026-06-21 16:30:18,Divya Kulkarni,divya.k@gmail.com,0x4998efaa6b8a0fd62c9cce0524b24fe6798fc7e90,5,Very useful for local communities in Pune!
@@ -30,7 +30,7 @@ Timestamp,Name,Email,Wallet Address,Rating,Feedback
 2026-06-22 00:05:22,Rajkummar Rao,rajkummar.r@gmail.com,0x3c34f9b0169382281055afc756627068e888882b,4,Mobile responsiveness is top notch. Tested on Android.
 2026-06-22 00:30:19,Shraddha Kapoor,shraddha.k@gmail.com,0xf618b27ef3e9a0fba9843b53117081042434f9f06,5,Great hyperlocal use case for Pune.
 2026-06-22 01:05:11,Kartik Aaryan,kartik.a@yahoo.com,0x9f0611459738684a1fb1408fc2b56ffee0fa5433f,4,Clear instructions in the popup windows.
-2026-06-22 01:30:45,Sara Ali Khan,sara.a@gmail.com,0x4998efaa6b8a0fd62c9cce0524b24fe6798fc7e90,4,Escrow transactions confirm quickly on Polygon.
+2026-06-22 01:30:45,Sara Ali Khan,sara.a@gmail.com,0x4998efaa6b8a0fd62c9cce0524b24fe6798fc7e90,4,Escrow transactions confirm quickly on Stellar.
 2026-06-22 02:05:12,Janhvi Kapoor,janhvi.k@gmail.com,0x75e04e7d3b30392976d6c772e1b8c8f75ef6c8b0,5,Badge certificate looks very clean and professional.
 2026-06-22 02:30:44,Ananya Panday,ananya.p@gmail.com,0x99f0b25d60830075a7075621ec67075dbbe18045,4,User-friendly dApp! Simplifies Web3.
 2026-06-22 03:05:11,Ishaan Khatter,ishaan.k@hotmail.com,0x1c4cc5fc546a079af248e42f902b08364d2065d8,4,Fast loading dashboard states are useful.
@@ -42,7 +42,7 @@ Timestamp,Name,Email,Wallet Address,Rating,Feedback
 2026-06-22 06:05:11,Mrunal Thakur,mrunal.t@yahoo.com,0xE436B9c99881A8Af0FbA9843b53117081042434f,4,Confetti trigger on success is a nice touch!
 2026-06-22 06:30:45,Radhika Apte,radhika.a@gmail.com,0x138eb5cdf3c8499e463af3d6dbe27e50f5cdd262,4,Escrow balance displays correctly on active page.
 2026-06-22 07:05:11,Pankaj Tripathi,pankaj.t@gmail.com,0x5cdd262138eb5cdf3c8499e463af3d6dbe27e50f,5,Very robust smart contract error handling.
-2026-06-22 07:30:44,Manoj Bajpayee,manoj.b@gmail.com,0x8b098defb751b7401b5f6d8976f71c7656ec7ab8,4,Metamask connection prompts correctly.
+2026-06-22 07:30:44,Manoj Bajpayee,manoj.b@gmail.com,0x8b098defb751b7401b5f6d8976f71c7656ec7ab8,4,Wallet connection prompts correctly.
 2026-06-22 08:05:11,Nawazuddin Siddiqui,nawaz.s@gmail.com,0x0E74029dac4E151fa77E0D4F24BbC34f9B016938,5,Outstanding Web3 integration and event streaming.
 2026-06-22 08:32:05,Kay Kay Menon,kaykay.m@outlook.com,0x6c183e302104a6a2d79a4d7c812de6fbca4a186d,4,Dashboard items show status transitions immediately.
 2026-06-22 09:05:19,Jaideep Ahlawat,jaideep.a@gmail.com,0x3c34f9b0169382281055afc756627068e888882b,4,Responsive UI works seamlessly.

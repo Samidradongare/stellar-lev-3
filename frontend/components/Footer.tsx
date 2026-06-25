@@ -55,7 +55,7 @@ export const Footer: React.FC = () => {
             <GithubIcon className="w-5 h-5" />
           </a>
           <span className="text-xs text-slate-500">
-            Polygon Amoy &bull; Solidity &bull; Next.js 14
+            Stellar Soroban &bull; Rust &bull; Next.js 14
           </span>
         </div>
       </div>

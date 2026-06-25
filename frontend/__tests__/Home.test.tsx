@@ -6,7 +6,6 @@ jest.mock('@/context/WalletContext', () => ({
   useWallet: () => ({
     account: null,
     provider: null,
-    isCorrectNetwork: false,
     connectWallet: jest.fn(),
   }),
 }))

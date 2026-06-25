@@ -3,15 +3,15 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@/context/WalletContext";
-import { getLostAndFoundContract } from "@/lib/contractHelpers";
+import { invokeContractFunction } from "@/lib/contractHelpers";
+import { buildPostLostItemArgs, XLM_CONTRACT_ADDRESS } from "@/lib/abis";
 import { PUNE_LOCATIONS } from "@/lib/constants";
 import { useTransaction } from "@/hooks/useTransaction";
 import IPFSImageUpload from "@/components/IPFSImageUpload";
 import { PlusCircle, Info, ShieldAlert, Coins } from "lucide-react";
-import { ethers } from "ethers";
 
 export default function PostItem() {
-  const { account, signer, isCorrectNetwork, connectWallet } = useWallet();
+  const { account, connectWallet } = useWallet();
   const { execute, isPending } = useTransaction();
   const router = useRouter();
 
@@ -40,7 +40,7 @@ export default function PostItem() {
       return;
     }
     if (!rewardAmount || parseFloat(rewardAmount) <= 0) {
-      setValidationError("Please specify an escrow reward greater than 0 ETH.");
+      setValidationError("Please specify an escrow reward greater than 0 XLM.");
       return;
     }
     if (!photoIPFS) {
@@ -49,21 +49,30 @@ export default function PostItem() {
     }
 
     try {
-      const contract = getLostAndFoundContract(signer);
-      if (!contract) return;
+      if (!account) return;
 
-      const rewardInWei = ethers.parseEther(rewardAmount);
+      // 1 XLM = 10,000,000 stroops
+      const rewardInStroops = Math.floor(parseFloat(rewardAmount) * 10000000);
 
-      const txPromise = contract.postLostItem(
+      // Arguments for post_lost_item
+      const args = buildPostLostItemArgs(
+        account,
+        XLM_CONTRACT_ADDRESS,
         description,
         photoIPFS,
         location,
-        { value: rewardInWei }
+        BigInt(rewardInStroops)
       );
 
-      await execute(txPromise, {
-        pendingMessage: "Initiating escrow lock. Please sign the transaction in MetaMask...",
-        successMessage: `Lost item listed successfully! Reward of ${rewardAmount} ETH locked in escrow.`,
+      const txPromise = invokeContractFunction(
+        "post_lost_item",
+        args,
+        account
+      );
+
+      await execute(txPromise as any, {
+        pendingMessage: "Initiating escrow lock. Please sign the transaction in Freighter...",
+        successMessage: `Lost item listed successfully! Reward of ${rewardAmount} XLM locked in escrow.`,
         errorMessage: "Failed to post lost item listing.",
         onSuccess: () => {
           // Redirect to browse listings
@@ -83,29 +92,14 @@ export default function PostItem() {
           <ShieldAlert className="w-12 h-12 text-amber-400 mb-4" />
           <h2 className="text-xl font-bold text-white mb-2">Wallet Disconnected</h2>
           <p className="text-sm text-slate-400 mb-6">
-            You must connect your MetaMask wallet to lock reward escrows and list lost items.
+            You must connect your Freighter wallet to lock reward escrows and list lost items.
           </p>
           <button
             onClick={connectWallet}
             className="px-6 py-3 rounded-xl bg-saffron hover:bg-saffron-dark text-white font-bold transition-all shadow-[0_4px_15px_rgba(255,107,0,0.3)] cursor-pointer"
           >
-            Connect Wallet
+            Connect Freighter
           </button>
-        </div>
-      </div>
-    );
-  }
-
-  // State: Wrong Network
-  if (!isCorrectNetwork) {
-    return (
-      <div className="max-w-md mx-auto my-16 px-4">
-        <div className="glass-panel p-8 rounded-2xl text-center flex flex-col items-center">
-          <ShieldAlert className="w-12 h-12 text-rose-500 mb-4" />
-          <h2 className="text-xl font-bold text-white mb-2">Unsupported Blockchain Network</h2>
-          <p className="text-sm text-slate-400 mb-6">
-            Please switch your MetaMask network to the Hardhat Localhost or Polygon Amoy to continue.
-          </p>
         </div>
       </div>
     );
@@ -166,16 +160,16 @@ export default function PostItem() {
             {/* Reward */}
             <div>
               <label className="block text-sm font-semibold text-slate-300 mb-2">
-                Escrow Reward Amount (ETH/POL) <span className="text-saffron">*</span>
+                Escrow Reward Amount (XLM) <span className="text-saffron">*</span>
               </label>
               <div className="relative">
                 <input
                   type="number"
-                  step="0.0001"
-                  min="0.0001"
+                  step="0.1"
+                  min="0.1"
                   value={rewardAmount}
                   onChange={(e) => setRewardAmount(e.target.value)}
-                  placeholder="e.g. 0.05"
+                  placeholder="e.g. 5.0"
                   className="glass-input w-full p-3 pl-10 rounded-xl text-sm"
                   required
                 />
@@ -191,7 +185,7 @@ export default function PostItem() {
           <div className="p-4 rounded-xl border border-white/5 bg-slate-950/20 text-xs text-slate-400 flex items-start gap-3">
             <Info className="w-4 h-4 text-saffron flex-shrink-0 mt-0.5" />
             <p>
-              Your reward funds will be held in the smart contract's secure escrow account. They are locked safely and can only be transferred to a verified finder or refunded back to your wallet.
+              Your reward funds will be held in the smart contract's secure escrow account on the Stellar Network. They are locked safely and can only be transferred to a verified finder or refunded back to your wallet.
             </p>
           </div>
 

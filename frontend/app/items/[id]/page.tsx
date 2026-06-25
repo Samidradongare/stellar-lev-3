@@ -4,66 +4,53 @@ import React, { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@/context/WalletContext";
-import { getLostAndFoundContract } from "@/lib/contractHelpers";
+import { simulateContractCall, invokeContractFunction } from "@/lib/contractHelpers";
+import { 
+  buildGetItemArgs, 
+  buildGetClaimsByItemArgs,
+  buildVerifyClaimArgs,
+  buildRejectClaimArgs,
+  parseItem, 
+  parseClaim, 
+  ParsedItem,
+  ParsedClaim
+} from "@/lib/abis";
 import { resolveIPFS } from "@/hooks/useIPFS";
 import { useTransaction } from "@/hooks/useTransaction";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { MapPin, Coins, Calendar, ArrowLeft, Send, CheckCircle, ShieldAlert, XCircle } from "lucide-react";
-import { ethers } from "ethers";
-
-interface ClaimType {
-  id: bigint;
-  itemId: bigint;
-  claimant: string;
-  proofIPFS: string;
-  status: number; // 0: Pending, 1: Verified, 2: Rejected
-  timestamp: bigint;
-}
+import { scValToNative } from "@stellar/stellar-sdk";
 
 export default function ItemDetail({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const itemId = resolvedParams.id;
-  const { account, provider, signer, isCorrectNetwork } = useWallet();
+  const { account, connectWallet } = useWallet();
   const { execute, isPending } = useTransaction();
   const router = useRouter();
 
   // State
-  const [item, setItem] = useState<any>(null);
-  const [claims, setClaims] = useState<ClaimType[]>([]);
+  const [item, setItem] = useState<ParsedItem | null>(null);
+  const [claims, setClaims] = useState<ParsedClaim[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchItemDetails = async () => {
-    if (!provider || !isCorrectNetwork) return;
     setIsLoading(true);
     try {
-      const contract = getLostAndFoundContract(provider);
-      if (!contract) return;
-
-      const rawItem = await contract.getItem(Number(itemId));
-      setItem({
-        id: rawItem.id,
-        owner: rawItem.owner,
-        description: rawItem.description,
-        photoIPFS: rawItem.photoIPFS,
-        reward: rawItem.reward,
-        status: Number(rawItem.status),
-        timestamp: rawItem.timestamp,
-        location: rawItem.location
-      });
+      // Fetch Item
+      const itemVal = await simulateContractCall("get_item", buildGetItemArgs(Number(itemId)));
+      const parsedItem = parseItem(itemVal);
+      setItem(parsedItem);
 
       // Fetch claims
-      const claimIds: bigint[] = await contract.getClaimsByItem(Number(itemId));
-      const claimsList: ClaimType[] = [];
+      const claimIdsVal = await simulateContractCall("get_claims_by_item", buildGetClaimsByItemArgs(Number(itemId)));
+      const claimIds = scValToNative(claimIdsVal) as number[];
+      
+      const claimsList: ParsedClaim[] = [];
       for (const cid of claimIds) {
-        const c = await contract.getClaim(Number(cid));
-        claimsList.push({
-          id: c.id,
-          itemId: c.itemId,
-          claimant: c.claimant,
-          proofIPFS: c.proofIPFS,
-          status: Number(c.status),
-          timestamp: c.timestamp
-        });
+        const { buildGetClaimArgs } = await import("@/lib/abis");
+        const claimVal = await simulateContractCall("get_claim", buildGetClaimArgs(cid));
+        const c = parseClaim(claimVal);
+        claimsList.push(c);
       }
       setClaims(claimsList);
     } catch (err) {
@@ -74,60 +61,22 @@ export default function ItemDetail({ params }: { params: Promise<{ id: string }>
   };
 
   useEffect(() => {
-    if (provider && isCorrectNetwork) {
-      fetchItemDetails();
-    } else {
-      // Mock data for presentation mode
-      if (itemId === "1") {
-        setItem({
-          id: 1n,
-          owner: "0x1234567890123456789012345678901234567890",
-          description: "Black leather wallet containing Aadhaar card, driving license and credit cards.",
-          photoIPFS: "ipfs://mock-wallet",
-          reward: 20000000000000000n, // 0.02 ETH
-          status: 0,
-          timestamp: BigInt(Math.floor(Date.now() / 1000) - 3600),
-          location: "Koregaon Park"
-        });
-        setClaims([]);
-      } else if (itemId === "2") {
-        setItem({
-          id: 2n,
-          owner: "0x2345678901234567890123456789012345678901",
-          description: "Dell Latitude laptop left in a cafe with a silver stickers on the shell.",
-          photoIPFS: "ipfs://mock-laptop",
-          reward: 250000000000000000n, // 0.25 ETH
-          status: 1,
-          timestamp: BigInt(Math.floor(Date.now() / 1000) - 7200),
-          location: "Baner"
-        });
-        setClaims([
-          {
-            id: 1n,
-            itemId: 2n,
-            claimant: "0x9876543210987654321098765432109876543210",
-            proofIPFS: "ipfs://mock-laptop-proof",
-            status: 0, // Pending
-            timestamp: BigInt(Math.floor(Date.now() / 1000) - 3600)
-          }
-        ]);
-      } else {
-        setItem(null);
-      }
-      setIsLoading(false);
-    }
-  }, [provider, isCorrectNetwork, itemId]);
+    fetchItemDetails();
+  }, [itemId]);
 
   // Actions
   const handleVerify = async (claimId: number) => {
     try {
-      const contract = getLostAndFoundContract(signer);
-      if (!contract) return;
-
-      const txPromise = contract.verifyClaim(claimId);
-      await execute(txPromise, {
-        pendingMessage: "Approving claim and triggering Escrow release & NFT mint...",
-        successMessage: "Claim verified! Escrow reward released and certificate minted to finder.",
+      if (!account) return;
+      const txPromise = invokeContractFunction(
+        "verify_claim",
+        buildVerifyClaimArgs(account, claimId),
+        account
+      );
+      
+      await execute(txPromise as any, {
+        pendingMessage: "Approving claim and triggering Escrow release...",
+        successMessage: "Claim verified! Escrow reward released.",
         errorMessage: "Failed to verify claim.",
         triggerConfetti: true,
         onSuccess: () => {
@@ -141,11 +90,14 @@ export default function ItemDetail({ params }: { params: Promise<{ id: string }>
 
   const handleReject = async (claimId: number) => {
     try {
-      const contract = getLostAndFoundContract(signer);
-      if (!contract) return;
-
-      const txPromise = contract.rejectClaim(claimId);
-      await execute(txPromise, {
+      if (!account) return;
+      const txPromise = invokeContractFunction(
+        "reject_claim",
+        buildRejectClaimArgs(account, claimId),
+        account
+      );
+      
+      await execute(txPromise as any, {
         pendingMessage: "Rejecting claim and triggering Escrow refund...",
         successMessage: "Claim rejected! Escrow funds successfully refunded to your wallet.",
         errorMessage: "Failed to reject claim.",
@@ -183,14 +135,14 @@ export default function ItemDetail({ params }: { params: Promise<{ id: string }>
     );
   }
 
-  const isOwner = account && item.owner.toLowerCase() === account.toLowerCase();
+  const isOwner = account && item.owner === account;
   const dateStr = new Date(Number(item.timestamp) * 1000).toLocaleDateString(undefined, {
     month: "long",
     day: "numeric",
     year: "numeric"
   });
 
-  const hasAlreadyClaimed = claims.some((c) => account && c.claimant.toLowerCase() === account.toLowerCase());
+  const hasAlreadyClaimed = claims.some((c) => account && c.claimant === account);
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full flex-grow">
@@ -242,7 +194,7 @@ export default function ItemDetail({ params }: { params: Promise<{ id: string }>
                   <Coins className="w-6 h-6 text-saffron" />
                   <div>
                     <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">Escrow Reward Pool</span>
-                    <h3 className="text-lg font-black text-saffron">{ethers.formatEther(item.reward)} ETH</h3>
+                    <h3 className="text-lg font-black text-saffron">{Number(item.reward) / 10000000} XLM</h3>
                   </div>
                 </div>
                 
@@ -272,7 +224,7 @@ export default function ItemDetail({ params }: { params: Promise<{ id: string }>
               </div>
             ) : (
               <div>
-                {item.status === 0 || item.status === 1 ? (
+                {item.status === "Lost" || item.status === "Claimed" ? (
                   hasAlreadyClaimed ? (
                     <p className="text-xs text-amber-400 bg-amber-400/10 border border-amber-400/20 p-3 rounded-lg font-medium">
                       You have already submitted a claim for this item. Monitor its status in your Dashboard.
@@ -314,13 +266,13 @@ export default function ItemDetail({ params }: { params: Promise<{ id: string }>
                       </span>
                       
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
-                        claim.status === 0
+                        claim.status === "Pending"
                           ? "text-amber-400 bg-amber-400/10 border-amber-400/20"
-                          : claim.status === 1
+                          : claim.status === "Verified"
                           ? "text-emerald-400 bg-emerald-400/10 border-emerald-400/20"
                           : "text-rose-400 bg-rose-400/10 border-rose-400/20"
                       }`}>
-                        {claim.status === 0 ? "Pending" : claim.status === 1 ? "Verified" : "Rejected"}
+                        {claim.status}
                       </span>
                     </div>
 
@@ -340,7 +292,7 @@ export default function ItemDetail({ params }: { params: Promise<{ id: string }>
                     </div>
 
                     {/* Actions for Item Owner */}
-                    {isOwner && claim.status === 0 && (
+                    {isOwner && claim.status === "Pending" && (
                       <div className="grid grid-cols-2 gap-3 pt-2">
                         <button
                           onClick={() => handleVerify(Number(claim.id))}

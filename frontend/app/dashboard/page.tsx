@@ -3,68 +3,75 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useWallet } from "@/context/WalletContext";
-import { getLostAndFoundContract } from "@/lib/contractHelpers";
-import ItemCard, { ItemType } from "@/components/ItemCard";
+import { simulateContractCall } from "@/lib/contractHelpers";
+import { 
+  buildGetItemsByOwnerArgs, 
+  buildGetClaimsByItemArgs, 
+  buildGetItemArgs, 
+  parseItem, 
+  parseClaim, 
+  buildGetTotalItemsArgs,
+  ParsedItem
+} from "@/lib/abis";
+import ItemCard from "@/components/ItemCard";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { LayoutDashboard, Award, PlusCircle, ShieldAlert, Archive, Clock, CheckCircle } from "lucide-react";
-import { ethers } from "ethers";
+import { scValToNative } from "@stellar/stellar-sdk";
 
 export default function Dashboard() {
-  const { account, provider, isCorrectNetwork, connectWallet } = useWallet();
+  const { account, connectWallet } = useWallet();
   const [activeTab, setActiveTab] = useState<"posts" | "claims">("posts");
-  const [postedItems, setPostedItems] = useState<ItemType[]>([]);
+  const [postedItems, setPostedItems] = useState<any[]>([]);
   const [claimedItems, setClaimedItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchDashboardData = async () => {
-    if (!provider || !account || !isCorrectNetwork) return;
+    if (!account) return;
     setIsLoading(true);
     try {
-      const contract = getLostAndFoundContract(provider);
-      if (!contract) return;
-
       // 1. Fetch items owned by user
-      const ownedItemIds: bigint[] = await contract.getItemsByOwner(account);
-      const ownedList: ItemType[] = [];
+      const ownedItemIdsVal = await simulateContractCall(
+        "get_items_by_owner",
+        buildGetItemsByOwnerArgs(account)
+      );
+      const ownedItemIds = scValToNative(ownedItemIdsVal) as number[];
+      
+      const ownedList: any[] = [];
       for (const id of ownedItemIds) {
-        const item = await contract.getItem(Number(id));
-        ownedList.push({
-          id: item.id,
-          owner: item.owner,
-          description: item.description,
-          photoIPFS: item.photoIPFS,
-          reward: item.reward,
-          status: Number(item.status),
-          timestamp: item.timestamp,
-          location: item.location
-        });
+        const itemVal = await simulateContractCall("get_item", buildGetItemArgs(id));
+        const item = parseItem(itemVal);
+        ownedList.push(item);
       }
-      setPostedItems(ownedList.sort((a, b) => Number(b.timestamp) - Number(a.timestamp)));
+      setPostedItems(ownedList.sort((a, b) => b.timestamp - a.timestamp));
 
-      // 2. Scan all claims to find those submitted by user (Since contract has mapping by claimId, we scan or fetch items)
-      // Since mapping by claimant is not natively indexable, we query all claims for all items
-      // To optimize: we scan items and look inside their claims.
+      // 2. Scan all claims to find those submitted by user
       const claimsList: any[] = [];
-      const totalItemsBigInt = await contract.getTotalItems();
-      const totalItems = Number(totalItemsBigInt);
+      const totalItemsVal = await simulateContractCall("get_total_items", buildGetTotalItemsArgs());
+      const totalItems = scValToNative(totalItemsVal) as number;
 
       for (let itemId = 1; itemId <= totalItems; itemId++) {
         try {
-          const item = await contract.getItem(itemId);
-          const claimIds: bigint[] = await contract.getClaimsByItem(itemId);
+          const itemVal = await simulateContractCall("get_item", buildGetItemArgs(itemId));
+          const item = parseItem(itemVal);
+          
+          const claimIdsVal = await simulateContractCall("get_claims_by_item", buildGetClaimsByItemArgs(itemId));
+          const claimIds = scValToNative(claimIdsVal) as number[];
           
           for (const cid of claimIds) {
-            const claim = await contract.getClaim(Number(cid));
-            if (claim.claimant.toLowerCase() === account.toLowerCase()) {
+            const { buildGetClaimArgs } = await import("@/lib/abis");
+            const actualClaimVal = await simulateContractCall("get_claim", buildGetClaimArgs(cid));
+            const claim = parseClaim(actualClaimVal);
+            
+            if (claim.claimant === account) {
               claimsList.push({
-                claimId: claim.id.toString(),
-                itemId: item.id.toString(),
+                claimId: claim.id,
+                itemId: item.id,
                 description: item.description,
                 location: item.location,
-                reward: ethers.formatEther(item.reward),
+                reward: (Number(item.reward) / 1e7).toFixed(2), // Format XLM
                 photoIPFS: item.photoIPFS,
-                claimStatus: Number(claim.status), // 0: Pending, 1: Verified, 2: Rejected
-                itemStatus: Number(item.status),
+                claimStatus: claim.status, 
+                itemStatus: item.status,
                 timestamp: claim.timestamp
               });
             }
@@ -74,7 +81,7 @@ export default function Dashboard() {
         }
       }
       
-      setClaimedItems(claimsList.sort((a, b) => Number(b.timestamp) - Number(a.timestamp)));
+      setClaimedItems(claimsList.sort((a, b) => b.timestamp - a.timestamp));
     } catch (err) {
       console.error("Error fetching dashboard data:", err);
     } finally {
@@ -83,39 +90,21 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    if (provider && account && isCorrectNetwork) {
+    if (account) {
       fetchDashboardData();
-
-      const contract = getLostAndFoundContract(provider);
-      if (contract) {
-        const handleEvent = () => fetchDashboardData();
-        
-        contract.on("ItemPosted", handleEvent);
-        contract.on("ClaimSubmitted", handleEvent);
-        contract.on("ClaimVerified", handleEvent);
-        contract.on("ClaimRejected", handleEvent);
-
-        return () => {
-          contract.off("ItemPosted", handleEvent);
-          contract.off("ClaimSubmitted", handleEvent);
-          contract.off("ClaimVerified", handleEvent);
-          contract.off("ClaimRejected", handleEvent);
-        };
-      }
     } else {
-      // Mock data for disconnected state
       setPostedItems([]);
       setClaimedItems([]);
     }
-  }, [provider, account, isCorrectNetwork]);
+  }, [account]);
 
-  const getClaimStatusDetails = (status: number) => {
+  const getClaimStatusDetails = (status: string) => {
     switch (status) {
-      case 0:
+      case "Pending":
         return { text: "Pending Verification", style: "text-amber-400 bg-amber-400/10 border-amber-400/20" };
-      case 1:
+      case "Verified":
         return { text: "Verified & Rewarded", style: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20" };
-      case 2:
+      case "Rejected":
         return { text: "Rejected", style: "text-rose-400 bg-rose-400/10 border-rose-400/20" };
       default:
         return { text: "Unknown", style: "text-slate-400 bg-slate-400/10 border-slate-400/20" };
@@ -130,29 +119,14 @@ export default function Dashboard() {
           <ShieldAlert className="w-12 h-12 text-amber-400 mb-4" />
           <h2 className="text-xl font-bold text-white mb-2">Wallet Disconnected</h2>
           <p className="text-sm text-slate-400 mb-6">
-            Please connect your wallet to access your custom dashboard.
+            Please connect your Freighter wallet to access your custom dashboard.
           </p>
           <button
             onClick={connectWallet}
             className="px-6 py-3 rounded-xl bg-saffron hover:bg-saffron-dark text-white font-bold transition-all shadow-[0_4px_15px_rgba(255,107,0,0.3)] cursor-pointer"
           >
-            Connect Wallet
+            Connect Freighter
           </button>
-        </div>
-      </div>
-    );
-  }
-
-  // State: Wrong Network
-  if (!isCorrectNetwork) {
-    return (
-      <div className="max-w-md mx-auto my-16 px-4">
-        <div className="glass-panel p-8 rounded-2xl text-center flex flex-col items-center">
-          <ShieldAlert className="w-12 h-12 text-rose-500 mb-4" />
-          <h2 className="text-xl font-bold text-white mb-2">Unsupported Network</h2>
-          <p className="text-sm text-slate-400 mb-6">
-            Please switch to Localhost or Polygon Amoy in MetaMask.
-          </p>
         </div>
       </div>
     );
@@ -203,7 +177,7 @@ export default function Dashboard() {
         postedItems.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {postedItems.map((item) => (
-              <ItemCard key={item.id.toString()} item={item} />
+              <ItemCard key={item.id.toString()} item={item as any} />
             ))}
           </div>
         ) : (
@@ -256,7 +230,7 @@ export default function Dashboard() {
                       {statusDetails.text}
                     </span>
                     <span className="text-xs text-slate-400 font-semibold flex items-center gap-1">
-                      Reward Pool: <strong className="text-saffron">{claim.reward} ETH</strong>
+                      Reward Pool: <strong className="text-saffron">{claim.reward} XLM</strong>
                     </span>
                     <Link
                       href={`/items/${claim.itemId}`}

@@ -2,54 +2,50 @@
 
 import React, { useEffect, useState } from "react";
 import { useWallet } from "@/context/WalletContext";
-import { getLostAndFoundContract } from "@/lib/contractHelpers";
+import { simulateContractCall } from "@/lib/contractHelpers";
+import { buildGetItemArgs, buildGetTotalItemsArgs, parseItem, ParsedItem } from "@/lib/abis";
 import { PUNE_LOCATIONS } from "@/lib/constants";
 import ItemCard, { ItemType } from "@/components/ItemCard";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { Search as SearchIcon, MapPin, SlidersHorizontal, RefreshCw, Archive } from "lucide-react";
+import { scValToNative } from "@stellar/stellar-sdk";
 
 export default function Items() {
-  const { provider, isCorrectNetwork } = useWallet();
-  const [items, setItems] = useState<ItemType[]>([]);
-  const [filteredItems, setFilteredItems] = useState<ItemType[]>([]);
+  const { account } = useWallet();
+  const [items, setItems] = useState<any[]>([]);
+  const [filteredItems, setFilteredItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   // Filter States
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("All");
-  const [selectedStatus, setSelectedStatus] = useState("All"); // All, Lost (0), Claimed (1), Verified (2), Completed (3)
+  const [selectedStatus, setSelectedStatus] = useState("All"); 
 
   const fetchItems = async () => {
-    if (!provider || !isCorrectNetwork) return;
     setIsLoading(true);
     try {
-      const contract = getLostAndFoundContract(provider);
-      if (!contract) return;
-
-      const fetchedListings: ItemType[] = [];
-      const totalItemsBigInt = await contract.getTotalItems();
-      const totalItems = Number(totalItemsBigInt);
+      const fetchedListings: any[] = [];
+      const totalItemsVal = await simulateContractCall(
+        "get_total_items",
+        buildGetTotalItemsArgs()
+      );
+      const totalItems = scValToNative(totalItemsVal) as number;
       
       for (let id = 1; id <= totalItems; id++) {
         try {
-          const rawItem = await contract.getItem(id);
-          fetchedListings.push({
-            id: rawItem.id,
-            owner: rawItem.owner,
-            description: rawItem.description,
-            photoIPFS: rawItem.photoIPFS,
-            reward: rawItem.reward,
-            status: Number(rawItem.status),
-            timestamp: rawItem.timestamp,
-            location: rawItem.location
-          });
+          const itemVal = await simulateContractCall(
+            "get_item",
+            buildGetItemArgs(id)
+          );
+          const item = parseItem(itemVal);
+          fetchedListings.push(item);
         } catch (err) {
           console.error(`Error fetching item ${id}:`, err);
         }
       }
 
       // Sort newest first
-      fetchedListings.sort((a, b) => Number(b.timestamp) - Number(a.timestamp));
+      fetchedListings.sort((a, b) => b.timestamp - a.timestamp);
       setItems(fetchedListings);
     } catch (err) {
       console.error("Error fetching items:", err);
@@ -59,61 +55,8 @@ export default function Items() {
   };
 
   useEffect(() => {
-    if (provider && isCorrectNetwork) {
-      fetchItems();
-
-      const contract = getLostAndFoundContract(provider);
-      if (contract) {
-        const handleEvent = () => fetchItems();
-        
-        contract.on("ItemPosted", handleEvent);
-        contract.on("ClaimSubmitted", handleEvent);
-        contract.on("ClaimVerified", handleEvent);
-        contract.on("ClaimRejected", handleEvent);
-
-        return () => {
-          contract.off("ItemPosted", handleEvent);
-          contract.off("ClaimSubmitted", handleEvent);
-          contract.off("ClaimVerified", handleEvent);
-          contract.off("ClaimRejected", handleEvent);
-        };
-      }
-    } else {
-      // Mock items for disconnected demo mode
-      setItems([
-        {
-          id: 1n,
-          owner: "0x1234567890123456789012345678901234567890",
-          description: "Black leather wallet containing Aadhaar card, driving license and credit cards.",
-          photoIPFS: "ipfs://mock-wallet",
-          reward: 20000000000000000n, // 0.02 ETH
-          status: 0, // Lost
-          timestamp: BigInt(Math.floor(Date.now() / 1000) - 3600),
-          location: "Koregaon Park"
-        },
-        {
-          id: 2n,
-          owner: "0x2345678901234567890123456789012345678901",
-          description: "Dell Latitude laptop left in a cafe with a silver stickers on the shell.",
-          photoIPFS: "ipfs://mock-laptop",
-          reward: 250000000000000000n, // 0.25 ETH
-          status: 1, // Claimed
-          timestamp: BigInt(Math.floor(Date.now() / 1000) - 7200),
-          location: "Baner"
-        },
-        {
-          id: 3n,
-          owner: "0x3456789012345678901234567890123456789012",
-          description: "Car Keys for a Hyundai Verna, has a blue silicone key cover.",
-          photoIPFS: "ipfs://mock-keys",
-          reward: 10000000000000000n, // 0.01 ETH
-          status: 2, // Verified (Returned)
-          timestamp: BigInt(Math.floor(Date.now() / 1000) - 86400),
-          location: "Kothrud"
-        }
-      ]);
-    }
-  }, [provider, isCorrectNetwork]);
+    fetchItems();
+  }, []);
 
   // Handle Filtering
   useEffect(() => {
@@ -133,8 +76,7 @@ export default function Items() {
 
     // 3. Filter by Status
     if (selectedStatus !== "All") {
-      const statusNum = parseInt(selectedStatus);
-      result = result.filter((item) => item.status === statusNum);
+      result = result.filter((item) => item.status === selectedStatus);
     }
 
     setFilteredItems(result);
@@ -147,15 +89,13 @@ export default function Items() {
         <div>
           <h1 className="text-3xl font-black text-white flex items-center gap-2">
             Lost &amp; Found Registry
-            {provider && isCorrectNetwork && (
-              <button
-                onClick={fetchItems}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
-                title="Refresh listings"
-              >
-                <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin text-saffron" : ""}`} />
-              </button>
-            )}
+            <button
+              onClick={fetchItems}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+              title="Refresh listings"
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin text-saffron" : ""}`} />
+            </button>
           </h1>
           <p className="text-sm text-slate-400 mt-1">
             Browse items lost across Pune or check your matches. Filter by status or location.
@@ -204,10 +144,10 @@ export default function Items() {
             className="glass-input w-full md:w-40 p-2.5 rounded-xl text-xs cursor-pointer"
           >
             <option value="All" className="bg-dark-bg text-white">All Statuses</option>
-            <option value="0" className="bg-dark-bg text-white">Lost</option>
-            <option value="1" className="bg-dark-bg text-white">Claimed</option>
-            <option value="2" className="bg-dark-bg text-white">Verified</option>
-            <option value="3" className="bg-dark-bg text-white">Completed (Refunded)</option>
+            <option value="Lost" className="bg-dark-bg text-white">Lost</option>
+            <option value="Claimed" className="bg-dark-bg text-white">Claimed</option>
+            <option value="Verified" className="bg-dark-bg text-white">Verified</option>
+            <option value="Completed" className="bg-dark-bg text-white">Completed (Refunded)</option>
           </select>
         </div>
 
@@ -221,7 +161,7 @@ export default function Items() {
       ) : filteredItems.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredItems.map((item) => (
-            <ItemCard key={item.id.toString()} item={item} />
+            <ItemCard key={item.id.toString()} item={item as any} />
           ))}
         </div>
       ) : (

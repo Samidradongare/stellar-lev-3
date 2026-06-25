@@ -30,7 +30,6 @@ describe('PostItem Page', () => {
     mockUseWallet.mockReturnValue({
       account: '0x123',
       provider: {},
-      isCorrectNetwork: true,
       connectWallet: jest.fn(),
       disconnectWallet: jest.fn(),
     });

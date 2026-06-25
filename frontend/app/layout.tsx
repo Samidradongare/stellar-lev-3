@@ -16,8 +16,8 @@ const poppins = Poppins({
 
 export const metadata: Metadata = {
   title: "PuneFinder — Hyperlocal Decentralized Lost & Found",
-  description: "Report lost items, claim found matches, and reward finders securely through smart contract escrows on Polygon. Earn FinderNFT certificates.",
-  keywords: ["Pune", "Lost and Found", "dApp", "Polygon", "Solidity", "Web3", "PuneFinder"],
+  description: "Report lost items, claim found matches, and reward finders securely through smart contract escrows on the Stellar network.",
+  keywords: ["Pune", "Lost and Found", "dApp", "Stellar", "Soroban", "Web3", "PuneFinder"],
   authors: [{ name: "PuneFinder Team" }]
 };
 
